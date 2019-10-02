@@ -92,10 +92,40 @@ with requests.Session() as s:
     # make regex to match illegal characters in title
     titleReg = re.compile(r'[:<>"/\|?*]')
 
-    # search archives for posts that contain video episodes
-    for y in range(2014, 2019):
-        for m in range(1, 13):
-            bpreq = s.get('https://harmontown.com/' + str(y) + '/' + str(m) + '/')
+    # users choose dates to download
+    print('Choose archives to fetch videos from')
+    print('Video episodes begin in October 2014')
+
+    starty = input('Start year: ')
+    startm = input('Start month: ')
+    endy = input('End year: ')
+    endm = input('End month: ')
+    
+    if (int(endy) - int(starty)) != 0:
+
+        for m in range(int(startm), 13):
+            bpreq = s.get('https://harmontown.com/' + starty + '/' + str(m) + '/')
             if bpreq.status_code == 200:
-                print(str(m) + ' ' + str(y))
-                get_url(str(y), str(m), bpreq, s, titleReg)
+                print(str(m) + ' ' + starty)
+                get_url(starty, str(m), bpreq, s, titleReg)
+
+        while (int(starty) + 1) != int(endy):
+            starty = str(int(starty) + 1)
+            for m in range(1, 13):
+                bpreq = s.get('https://harmontown.com/' + starty + '/' + str(m) + '/')
+                if bpreq.status_code == 200:
+                    print(str(m) + ' ' + starty)
+                    get_url(starty, str(m), bpreq, s, titleReg)
+
+        for m in range(1, int(endm)):
+            bpreq = s.get('https://harmontown.com/' + endy + '/' + str(m) + '/')
+            if bpreq.status_code == 200:
+                print(str(m) + ' ' + endy)
+                get_url(endy, str(m), bpreq, s, titleReg)
+    
+    else:
+        for m in range(int(startm), (int(endm)+1)):
+            bpreq = s.get('https://harmontown.com/' + endy + '/' + str(m) + '/')
+            if bpreq.status_code == 200:
+                print(str(m) + ' ' + endy)
+                get_url(endy, str(m), bpreq, s, titleReg)
