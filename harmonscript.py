@@ -2,6 +2,7 @@
 # harmonscript.py - download harmontown video podcasts
 import requests
 import bs4
+import re
 from getpass import getpass
 from fake_useragent import UserAgent
 from clint.textui import progress
@@ -36,7 +37,7 @@ def get_video(title, url, s):
                         print('*', end = '')
             
 
-def get_url(year, month, bpreq, s):
+def get_url(year, month, bpreq, s, titleReg):
    
     blogpage = bs4.BeautifulSoup(bpreq.content, features="html.parser")
     
@@ -44,7 +45,7 @@ def get_url(year, month, bpreq, s):
     pages = blogpage.select('#top > div.x-container.max.width.offset > div > div > ul > li:last-child> a')
     if len(pages) > 0:
         npurl = requests.get(pages[0].get('href'))
-        get_url(year, month, npurl, s)
+        get_url(year, month, npurl, s, titleReg)
     
     # find elements that contain videos
     if year == '2014':
@@ -54,7 +55,7 @@ def get_url(year, month, bpreq, s):
     
     if len(vid_post_elems) > 0:
         for vid_post in vid_post_elems:
-            title = vid_post.get('title')[14:]
+            title = titleReg.sub('', vid_post.get('title')[14:])
             url = vid_post.get('href')
             print(title + ' - ' + url)
             get_video(title, url, s)
@@ -88,10 +89,13 @@ with requests.Session() as s:
 
     # check if successful
 
+    # make regex to match illegal characters in title
+    titleReg = re.compile(r'[:<>"/\|?*]')
+
     # search archives for posts that contain video episodes
     for y in range(2014, 2019):
         for m in range(1, 13):
             bpreq = s.get('https://harmontown.com/' + str(y) + '/' + str(m) + '/')
             if bpreq.status_code == 200:
                 print(str(m) + ' ' + str(y))
-                get_url(str(y), str(m), bpreq, s)
+                get_url(str(y), str(m), bpreq, s, titleReg)
