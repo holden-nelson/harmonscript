@@ -146,7 +146,7 @@ with requests.Session() as s:
     starty = input('Start year (2014 to 2019): ')
     endm = input('End month (1 to 12): ')
     endy = input('End year (2014 to 2019): ')
-    location = input('Destination folder (default is current): ')
+    location = input('Destination folder (default is current): ') or '.'
 
     if not exists(abspath(location)):
         print("Invalid folder: " + location)
