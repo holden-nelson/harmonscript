@@ -1,6 +1,8 @@
 # /usr/bin/env python3
 # harmonscript.py - download harmontown video podcasts
-from os.path import abspath, join
+import json
+from os.path import abspath, join, exists
+from time import sleep
 
 import requests
 import bs4
@@ -9,8 +11,36 @@ from getpass import getpass
 from fake_useragent import UserAgent
 from clint.textui import progress
 
+INVENTORY = {
+    'completed': [],
+}
+INVENTORY_PATH = './.inventory.json'
+
+
+def load_inventory(dir_path):
+    """
+    load an inventory file if present, or create it if missing
+    :param dir_path: target directory
+    """
+    global INVENTORY
+    global INVENTORY_PATH
+    inventory_path = join(abspath(dir_path), ".inventory.json")
+    if exists(inventory_path):
+        with open(inventory_path, "r") as inv_file:
+            INVENTORY = json.load(inv_file)
+    else:
+        with open(inventory_path, "w") as inv_file:
+            json.dump(INVENTORY, inv_file)
+    INVENTORY_PATH = inventory_path
+
+
+def save_inventory():
+    with open(INVENTORY_PATH, 'w') as inv_file:
+        json.dump(INVENTORY, inv_file)
+
 # FUNCTION DEFINITIONS
 def get_video(title, url, s, destination_dir=None):
+    global INVENTORY
     vpreq = s.get(url)
     vidpage = bs4.BeautifulSoup(vpreq.content, features="html.parser")
     
@@ -33,12 +63,19 @@ def get_video(title, url, s, destination_dir=None):
         target_dir = destination_dir or abspath(".")
 
         with s.get(video_link[0].get('href'), stream = True) as vidreq:
-            target_file = join(target_dir, title + '.mp4')
+            target_file_name = title + '.mp4'
+            if target_file_name in INVENTORY['completed']:
+                print('Already completed, skipping...')
+                return
+            target_file = join(target_dir, target_file_name)
             with open(target_file, 'wb') as vidfile:
                 total_length = int(vidreq.headers.get('content-length'))
                 for chunk in progress.bar(vidreq.iter_content(chunk_size = 1024), expected_size = (total_length/1024) + 1):
                     if chunk:
                         vidfile.write(chunk)
+            INVENTORY['completed'].append(target_file_name)
+            save_inventory()
+        sleep(2)  # let the server breathe
             
 
 def get_url(year, month, bpreq, s, titleReg, destination_dir=None):
@@ -110,6 +147,11 @@ with requests.Session() as s:
     endm = input('End month (1 to 12): ')
     endy = input('End year (2014 to 2019): ')
     location = input('Destination folder (default is current): ')
+
+    if not exists(abspath(location)):
+        print("Invalid folder: " + location)
+        exit(1)
+    load_inventory(location)
 
     if (int(endy) - int(starty)) != 0:
 
