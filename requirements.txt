@@ -1,0 +1,4 @@
+beautifulsoup4==4.8.1
+clint==0.5.1
+fake-useragent==0.1.11
+requests==2.22.0
