@@ -96,11 +96,11 @@ with requests.Session() as s:
     print('Choose archives to fetch videos from')
     print('Video episodes begin in October 2014')
 
-    starty = input('Start year: ')
-    startm = input('Start month: ')
-    endy = input('End year: ')
-    endm = input('End month: ')
-    
+    startm = input('Start month (1 to 12): ')
+    starty = input('Start year (2014 to 2019): ')
+    endm = input('End month (1 to 12): ')
+    endy = input('End year (2014 to 2019): ')
+
     if (int(endy) - int(starty)) != 0:
 
         for m in range(int(startm), 13):
