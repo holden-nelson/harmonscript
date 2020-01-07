@@ -1,5 +1,9 @@
 # /usr/bin/env python3
 # harmonscript.py - download harmontown video podcasts
+import json
+from os.path import abspath, join, exists
+from time import sleep
+
 import requests
 import bs4
 import re
@@ -7,8 +11,36 @@ from getpass import getpass
 from fake_useragent import UserAgent
 from clint.textui import progress
 
+INVENTORY = {
+    'completed': [],
+}
+INVENTORY_PATH = './.inventory.json'
+
+
+def load_inventory(dir_path):
+    """
+    load an inventory file if present, or create it if missing
+    :param dir_path: target directory
+    """
+    global INVENTORY
+    global INVENTORY_PATH
+    inventory_path = join(abspath(dir_path), ".inventory.json")
+    if exists(inventory_path):
+        with open(inventory_path, "r") as inv_file:
+            INVENTORY = json.load(inv_file)
+    else:
+        with open(inventory_path, "w") as inv_file:
+            json.dump(INVENTORY, inv_file)
+    INVENTORY_PATH = inventory_path
+
+
+def save_inventory():
+    with open(INVENTORY_PATH, 'w') as inv_file:
+        json.dump(INVENTORY, inv_file)
+
 # FUNCTION DEFINITIONS
-def get_video(title, url, s):
+def get_video(title, url, s, destination_dir=None):
+    global INVENTORY
     vpreq = s.get(url)
     vidpage = bs4.BeautifulSoup(vpreq.content, features="html.parser")
     
@@ -28,16 +60,25 @@ def get_video(title, url, s):
             print('Video element not found')
 
     if len(video_link) > 0:
+        target_dir = destination_dir or abspath(".")
+
         with s.get(video_link[0].get('href'), stream = True) as vidreq:
-            with open(title + '.mp4', 'wb') as vidfile:
+            target_file_name = title + '.mp4'
+            if target_file_name in INVENTORY['completed']:
+                print('Already completed, skipping...')
+                return
+            target_file = join(target_dir, target_file_name)
+            with open(target_file, 'wb') as vidfile:
                 total_length = int(vidreq.headers.get('content-length'))
                 for chunk in progress.bar(vidreq.iter_content(chunk_size = 1024), expected_size = (total_length/1024) + 1):
                     if chunk:
                         vidfile.write(chunk)
-                        print('*', end = '')
+            INVENTORY['completed'].append(target_file_name)
+            save_inventory()
+        sleep(2)  # let the server breathe
             
 
-def get_url(year, month, bpreq, s, titleReg):
+def get_url(year, month, bpreq, s, titleReg, destination_dir=None):
    
     blogpage = bs4.BeautifulSoup(bpreq.content, features="html.parser")
     
@@ -45,7 +86,7 @@ def get_url(year, month, bpreq, s, titleReg):
     pages = blogpage.select('#top > div.x-container.max.width.offset > div > div > ul > li:last-child> a')
     if len(pages) > 0:
         npurl = requests.get(pages[0].get('href'))
-        get_url(year, month, npurl, s, titleReg)
+        get_url(year, month, npurl, s, titleReg, destination_dir)
     
     # find elements that contain videos
     if year == '2014':
@@ -58,7 +99,7 @@ def get_url(year, month, bpreq, s, titleReg):
             title = titleReg.sub('', vid_post.get('title')[14:])
             url = vid_post.get('href')
             print(title + ' - ' + url)
-            get_video(title, url, s)
+            get_video(title, url, s, destination_dir)
 
 # END FUNCTION DEFINITIONS
 
@@ -66,7 +107,12 @@ def get_url(year, month, bpreq, s, titleReg):
 wp_login = 'https://www.harmontown.com/wp-login.php'
 username = input('Enter your Harmontown username: ')
 password = getpass()
-ua = UserAgent()
+ua = None
+try:
+    ua = UserAgent()
+except Exception as ex:
+    # UserAgent can spit an ugly traceback users don't care about
+    pass
 
 
 with requests.Session() as s:
@@ -96,18 +142,24 @@ with requests.Session() as s:
     print('Choose archives to fetch videos from')
     print('Video episodes begin in October 2014')
 
-    starty = input('Start year: ')
-    startm = input('Start month: ')
-    endy = input('End year: ')
-    endm = input('End month: ')
-    
+    startm = input('Start month (1 to 12): ')
+    starty = input('Start year (2014 to 2019): ')
+    endm = input('End month (1 to 12): ')
+    endy = input('End year (2014 to 2019): ')
+    location = input('Destination folder (default is current): ') or '.'
+
+    if not exists(abspath(location)):
+        print("Invalid folder: " + location)
+        exit(1)
+    load_inventory(location)
+
     if (int(endy) - int(starty)) != 0:
 
         for m in range(int(startm), 13):
             bpreq = s.get('https://harmontown.com/' + starty + '/' + str(m) + '/')
             if bpreq.status_code == 200:
                 print(str(m) + ' ' + starty)
-                get_url(starty, str(m), bpreq, s, titleReg)
+                get_url(starty, str(m), bpreq, s, titleReg, location)
 
         while (int(starty) + 1) != int(endy):
             starty = str(int(starty) + 1)
@@ -115,17 +167,17 @@ with requests.Session() as s:
                 bpreq = s.get('https://harmontown.com/' + starty + '/' + str(m) + '/')
                 if bpreq.status_code == 200:
                     print(str(m) + ' ' + starty)
-                    get_url(starty, str(m), bpreq, s, titleReg)
+                    get_url(starty, str(m), bpreq, s, titleReg, location)
 
         for m in range(1, int(endm)):
             bpreq = s.get('https://harmontown.com/' + endy + '/' + str(m) + '/')
             if bpreq.status_code == 200:
                 print(str(m) + ' ' + endy)
-                get_url(endy, str(m), bpreq, s, titleReg)
+                get_url(endy, str(m), bpreq, s, titleReg, location)
     
     else:
         for m in range(int(startm), (int(endm)+1)):
             bpreq = s.get('https://harmontown.com/' + endy + '/' + str(m) + '/')
             if bpreq.status_code == 200:
                 print(str(m) + ' ' + endy)
-                get_url(endy, str(m), bpreq, s, titleReg)
+                get_url(endy, str(m), bpreq, s, titleReg, location)
