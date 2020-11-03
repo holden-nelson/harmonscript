@@ -60,7 +60,7 @@ def get_video(title, url, s, destination_dir=None):
             print('Video element not found')
 
     if len(video_link) > 0:
-        target_dir = destination_dir or abspath(".")
+        target_dir = destination_dir or abspath("..")
 
         with s.get(video_link[0].get('href'), stream = True) as vidreq:
             target_file_name = title + '.mp4'
