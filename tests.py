@@ -1,4 +1,5 @@
 import unittest
+from requests import session
 
 from models import HT_MEMBER
 from utils import get_video_links
@@ -27,10 +28,12 @@ class TestUtils(unittest.TestCase):
         self.current_member = HT_MEMBER(*current_login)
         self.current_member.login()
 
+        self.random_session = session()
+
     def test_get_video_links(self):
         # test one with both HQ and LQ
         cliffhanger_links = get_video_links(
-            self.current_member,
+            self.current_member.sess,
             'https://www.harmontown.com/2019/12/video-episode-360-cliffhanger/'
         )
         self.assertEqual(
@@ -44,7 +47,7 @@ class TestUtils(unittest.TestCase):
 
         # test with only HQ
         debbie_links = get_video_links(
-            self.current_member,
+            self.current_member.sess,
             'https://www.harmontown.com/2014/10/video-episode-117-debbie-request-permission-to-do-dallas/'
         )
         self.assertFalse(debbie_links.lq_link)
@@ -53,8 +56,21 @@ class TestUtils(unittest.TestCase):
             'https://download.harmontown.com/video/harmontown-2014-09-21-final.mp4'
         )
 
+    def test_free_videos_available_without_login(self):
+        # test a free video
+        simulation_links = get_video_links(
+            self.random_session,
+            'https://www.harmontown.com/2016/06/video-episode-200-simulation/'
+        )
+        self.assertFalse(simulation_links.lq_link)
+        self.assertEqual(
+            simulation_links.hq_link,
+            'https://download.harmontown.com/video/harmontown-2016-06-05-final.mp4'
+        )
+
     def tearDown(self):
         self.current_member.sess.close()
+        self.random_session.close()
 
 if __name__ == '__main__':
     unittest.main()

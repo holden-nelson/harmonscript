@@ -64,7 +64,7 @@ def find_urls():
 
     return vid_page_urls_by_episode
 
-def get_video_links(member, video_page_url):
+def get_video_links(sess, video_page_url):
     '''
     scrape the video post page for episode download links
     returns a namedtuple of links
@@ -74,7 +74,7 @@ def get_video_links(member, video_page_url):
 
     # build tree out of video page elements
     # get list of elements containing download links
-    video_page = member.sess.get(video_page_url)
+    video_page = sess.get(video_page_url)
     video_page_tree = html.fromstring(video_page.content)
     video_download_links = video_page_tree.xpath('//center//a')
 
@@ -91,6 +91,9 @@ def get_video_links(member, video_page_url):
     link_tuple = Links(hq_link, lq_link)
 
     return link_tuple
+
+def download_episode(episode_number, format, video_page_url):
+    pass
 
 if __name__ == '__main__':
     find_urls()
