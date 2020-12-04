@@ -5,6 +5,7 @@ import re
 
 import requests
 from lxml import html
+from clint.textui import progress
 
 def find_urls():
     '''
@@ -92,8 +93,24 @@ def get_video_links(sess, video_page_url):
 
     return link_tuple
 
-def download_episode(episode_number, format, video_page_url):
-    pass
+def download_episode(download_link, download_path, sess):
+    '''
+    :param download_link: string. link to episode being downloaded
+    :param download_path: string. path to download to
+    :param sess: session object to use
+    :return:
+    '''
+
+    # download video
+    with sess.get(download_link, stream=True) as episode_stream:
+        with open(download_path, 'wb') as episode_file:
+            total_length = int(episode_stream.headers.get('content-length'))
+            for chunk in progress.bar(
+                    episode_stream.iter_content(chunk_size=1024),
+                    expected_size = (total_length/1024) + 1
+            ):
+                if chunk:
+                    episode_file.write(chunk)
 
 if __name__ == '__main__':
     find_urls()
