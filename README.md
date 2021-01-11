@@ -1,5 +1,4 @@
 # Harmonscript - Download video episodes of Harmontown
+Master branch is the latest "working" version - this was one of my first projects.
 
-This python script requires requests, BeautifulSoup4, getpass, clint, and fake-useragent.
-
-Right not it just starts at the beginning of the archives and goes until the end. Soon I'll make it so you can choose which time frame to download but I wanted to get this out there so people can start trying to use it.
+A refactor was started on the refactor branch but was not completed as I moved on to other projects.
